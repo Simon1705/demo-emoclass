@@ -1,5 +1,6 @@
 // Supabase Edge Function: Alert Detector
-// Detects students with 3+ consecutive negative emotions and sends Telegram alert
+// Detects students with 3+ consecutive emotional patterns and sends Telegram alert
+// Patterns: Sad/Stressed, Drowsy/Sleepy, Normal energy
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -25,6 +26,8 @@ interface Class {
   name: string;
 }
 
+type AlertType = 'stressed' | 'sleepy' | 'normal';
+
 serve(async (req) => {
   try {
     // Only allow POST requests
@@ -43,10 +46,10 @@ serve(async (req) => {
 
     console.log(`New check-in: Student ${studentId}, Emotion: ${emotion}`);
 
-    // Only process negative emotions
-    if (emotion !== 'stressed' && emotion !== 'sleepy') {
-      console.log('Not a negative emotion, skipping alert check');
-      return new Response(JSON.stringify({ message: 'Not a negative emotion' }), {
+    // Only process emotions that need tracking (stressed, sleepy, normal)
+    if (emotion !== 'stressed' && emotion !== 'sleepy' && emotion !== 'normal') {
+      console.log('Emotion does not require pattern tracking, skipping alert check');
+      return new Response(JSON.stringify({ message: 'Emotion does not require tracking' }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -71,15 +74,31 @@ serve(async (req) => {
 
     console.log(`Recent check-ins for student ${studentId}:`, recentCheckins);
 
-    // Check if all 3 are negative emotions
+    // Check for 3 consecutive identical emotions that need attention
     if (recentCheckins && recentCheckins.length === 3) {
-      const allNegative = recentCheckins.every(
-        (c) => c.emotion === 'stressed' || c.emotion === 'sleepy'
-      );
+      // Check for 3 consecutive stressed emotions
+      const allStressed = recentCheckins.every((c) => c.emotion === 'stressed');
+      
+      // Check for 3 consecutive sleepy emotions
+      const allSleepy = recentCheckins.every((c) => c.emotion === 'sleepy');
+      
+      // Check for 3 consecutive normal emotions
+      const allNormal = recentCheckins.every((c) => c.emotion === 'normal');
 
-      if (allNegative) {
-        console.log('🚨 ALERT: 3 consecutive negative emotions detected!');
+      let alertType: AlertType | null = null;
+      
+      if (allStressed) {
+        alertType = 'stressed';
+        console.log('🚨 ALERT: 3 consecutive stressed emotions detected!');
+      } else if (allSleepy) {
+        alertType = 'sleepy';
+        console.log('🚨 ALERT: 3 consecutive sleepy emotions detected!');
+      } else if (allNormal) {
+        alertType = 'normal';
+        console.log('🚨 ALERT: 3 consecutive normal energy emotions detected!');
+      }
 
+      if (alertType) {
         // Get student details
         const { data: student, error: studentError } = await supabase
           .from('students')
@@ -104,10 +123,11 @@ serve(async (req) => {
           throw classError;
         }
 
-        // Send Telegram alert
+        // Send Telegram alert with specific type
         await sendTelegramAlert(
           (student as Student).name,
-          (classData as Class).name
+          (classData as Class).name,
+          alertType
         );
 
         return new Response(
@@ -115,13 +135,14 @@ serve(async (req) => {
             message: 'Alert sent',
             student: (student as Student).name,
             class: (classData as Class).name,
+            alertType,
           }),
           {
             headers: { 'Content-Type': 'application/json' },
           }
         );
       } else {
-        console.log('Not all 3 check-ins are negative, no alert needed');
+        console.log('3 check-ins found but not consecutive identical patterns, no alert needed');
       }
     } else {
       console.log(`Only ${recentCheckins?.length || 0} check-ins found, need 3 for alert`);
@@ -139,15 +160,68 @@ serve(async (req) => {
   }
 });
 
-async function sendTelegramAlert(studentName: string, className: string) {
+async function sendTelegramAlert(
+  studentName: string,
+  className: string,
+  alertType: AlertType
+) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('Telegram credentials not configured');
     throw new Error('Telegram credentials missing');
   }
 
-  const message = `🚨 EMOCLASS ALERT
+  let message = '';
+  
+  if (alertType === 'stressed') {
+    message = `🚨 EMOCLASS ALERT - PERLU PERHATIAN KHUSUS
 
-Siswa ${studentName} di ${className} menunjukkan emosi negatif 3 hari berturut-turut. Harap segera ditindaklanjuti.`;
+👤 Siswa: ${studentName}
+📚 Kelas: ${className}
+😔 Pola: Emosi sedih/tertekan selama 3 hari berturut-turut
+
+⚠️ REKOMENDASI TINDAK LANJUT GURU BK:
+1. 🗣️ Lakukan konseling individual segera
+2. 🏠 Hubungi orang tua/wali untuk koordinasi
+3. 👥 Pertimbangkan sesi kelompok dukungan sebaya
+4. 📋 Evaluasi faktor akademik atau sosial yang mungkin menjadi penyebab
+5. 💚 Pantau perkembangan emosi harian minggu depan
+
+📅 Tindakan: Jadwalkan pertemuan dalam 1-2 hari kerja
+⏰ Prioritas: TINGGI`;
+  } else if (alertType === 'sleepy') {
+    message = `🚨 EMOCLASS ALERT - PERHATIAN KESEHATAN
+
+👤 Siswa: ${studentName}
+📚 Kelas: ${className}
+😴 Pola: Mengantuk/kelelahan selama 3 hari berturut-turut
+
+⚠️ REKOMENDASI TINDAK LANJUT GURU BK:
+1. 🛏️ Tanyakan pola tidur dan kesehatan siswa
+2. 📱 Evaluasi penggunaan gadget sebelum tidur
+3. 🏠 Konsultasi dengan orang tua tentang rutinitas malam
+4. 🏥 Pertimbangkan rujukan ke tenaga kesehatan jika perlu
+5. 💡 Edukasi pentingnya sleep hygiene dan istirahat cukup
+6. 📚 Evaluasi beban tugas dan kegiatan ekstrakurikuler
+
+📅 Tindakan: Konseling ringan dalam 2-3 hari
+⏰ Prioritas: SEDANG`;
+  } else if (alertType === 'normal') {
+    message = `ℹ️ EMOCLASS MONITORING - PEMANTAUAN RUTIN
+
+👤 Siswa: ${studentName}
+📚 Kelas: ${className}
+🙂 Pola: Energi normal/datar selama 3 hari berturut-turut
+
+⚠️ REKOMENDASI TINDAK LANJUT GURU BK:
+1. 💬 Lakukan check-in informal untuk memahami kondisi siswa
+2. 🎯 Evaluasi motivasi dan engagement di kelas
+3. 🌟 Cari peluang untuk meningkatkan keterlibatan positif
+4. 🤝 Pertimbangkan aktivitas yang bisa meningkatkan semangat
+5. 📊 Pantau apakah ini pola konsisten atau fase sementara
+
+📅 Tindakan: Observasi dan check-in informal minggu ini
+⏰ Prioritas: RENDAH - Monitoring`;
+  }
 
   const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 

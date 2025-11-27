@@ -33,11 +33,16 @@
 - **Reset button** untuk memulai hari baru
 - **Glass morphism design** - Modern backdrop blur effects
 
-### 4. 🚨 Telegram Alert System (Otomatis)
-- **Smart detection** - 3x emosi negatif berturut-turut
-- **Instant notification** ke guru BK via Telegram
-- **Early intervention** - Cegah masalah sebelum membesar
-- **Automated workflow** - Zero manual monitoring
+### 4. 🚨 Enhanced Multi-Pattern Alert System (NEW!)
+- **Smart detection** - 3 consecutive days of specific emotional patterns
+- **Three alert types**:
+  - 😔 **Stressed/Sad** (Priority: HIGH) - Immediate counseling recommended
+  - 😴 **Sleepy/Drowsy** (Priority: MEDIUM) - Health check recommended
+  - 🙂 **Normal/Flat Energy** (Priority: LOW) - Monitoring recommended
+- **Structured recommendations** - Specific follow-up actions for guidance counselors
+- **Instant notification** - Telegram alerts to BK teacher
+- **Early intervention** - Prevent issues before they escalate
+- **Automated workflow** - Zero manual monitoring required
 
 ## 🚀 Tech Stack
 
@@ -163,6 +168,7 @@ Semua dokumentasi ada di folder `docs/`:
 ### 📱 Telegram Integration
 - [`docs/TELEGRAM_QUICK_SETUP.md`](docs/TELEGRAM_QUICK_SETUP.md) - Setup Telegram alert (10 menit)
 - [`docs/TELEGRAM_SETUP.md`](docs/TELEGRAM_SETUP.md) - Setup lengkap Telegram bot
+- [`docs/ENHANCED_ALERT_SYSTEM.md`](docs/ENHANCED_ALERT_SYSTEM.md) - **NEW!** Multi-pattern alert system documentation
 
 ### 🚢 Deployment
 - [`docs/DEPLOYMENT_WITH_AUTH.md`](docs/DEPLOYMENT_WITH_AUTH.md) - **NEW!** Deploy dengan authentication
